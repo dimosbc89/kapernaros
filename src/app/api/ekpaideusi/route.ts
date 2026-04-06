@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import { Resend } from "resend";
+
+export const runtime = "edge";
+
+const resend = new Resend(process.env.RESEND_API_KEY || "re_mock");
+const TO_EMAIL = process.env.ADMIN_EMAIL || "contact@kapernarosbeauty.gr";
+
+export async function POST(req: Request) {
+  try {
+    const data = await req.json();
+
+    if (!process.env.RESEND_API_KEY) {
+      console.log("[MOCK] Sending Email for Ekpaideusi:", data);
+      return NextResponse.json({ success: true, message: "Mock email sent" });
+    }
+
+    const { data: resData, error } = await resend.emails.send({
+      from: "Kapernaros Beauty Edu <onboarding@resend.dev>",
+      to: [TO_EMAIL],
+      subject: `Εγγραφή Λίστας Αναμονής (Εκπαίδευση): ${data.fullName}`,
+      html: `
+        <h2>Εγγραφή σε Λίστα Αναμονής Εκπαίδευσης</h2>
+        <ul>
+          <li><strong>Ονοματεπώνυμο:</strong> ${data.fullName}</li>
+          <li><strong>Email:</strong> ${data.email}</li>
+          <li><strong>Τηλέφωνο:</strong> ${data.phone}</li>
+          <li><strong>Ειδικότητα:</strong> ${data.specialization}</li>
+        </ul>
+        <h3>Τι θα θέλατε να βελτιώσετε:</h3>
+        <p>${data.improvement || "-"}</p>
+      `,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, data: resData });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
